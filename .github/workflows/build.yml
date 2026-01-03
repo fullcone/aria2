@@ -3,117 +3,12 @@ name: build
 on:
   push:
   pull_request:
-  workflow_dispatch:  # 手动触发按钮
+  workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04, macos-14]
-        compiler: [gcc, clang]
-        crypto: [openssl, gnutls]
-        bittorrent: [with-bt, without-bt]
-        exclude:
-        - os: macos-14
-          crypto: gnutls
-        - crypto: openssl
-          bittorrent: without-bt
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-    - uses: actions/checkout@v6
-    - name: Linux setup
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install \
-          g++-12 \
-          clang-15 \
-          autoconf \
-          automake \
-          autotools-dev \
-          autopoint \
-          libtool \
-          pkg-config \
-          libssl-dev \
-          libgnutls28-dev \
-          libc-ares-dev \
-          zlib1g-dev \
-          libsqlite3-dev \
-          libssh2-1-dev \
-          libcppunit-dev
-    - name: MacOS setup
-      if: runner.os == 'macOS'
-      run: |
-        brew install cppunit gettext openssl libssh2 c-ares sqlite3 \
-          autoconf automake pkg-config libtool
-    - name: Setup clang (Linux)
-      if: runner.os == 'Linux' && matrix.compiler == 'clang'
-      run: |
-        echo 'CC=clang-15' >> $GITHUB_ENV
-        echo 'CXX=clang++-15' >> $GITHUB_ENV
-    - name: Setup clang (MacOS)
-      if: runner.os == 'macOS' && matrix.compiler == 'clang'
-      run: |
-        echo 'CC=clang' >> $GITHUB_ENV
-        echo 'CXX=clang++' >> $GITHUB_ENV
-    - name: Setup gcc (Linux)
-      if: runner.os == 'Linux' && matrix.compiler == 'gcc'
-      run: |
-        echo 'CC=gcc-12' >> $GITHUB_ENV
-        echo 'CXX=g++-12' >> $GITHUB_ENV
-    - name: Setup gcc (MacOS)
-      if: runner.os == 'macOS' && matrix.compiler == 'gcc'
-      run: |
-        echo 'CC=gcc' >> $GITHUB_ENV
-        echo 'CXX=g++' >> $GITHUB_ENV
-    - name: Libtool
-      run: |
-        autoreconf -i
-    - name: Setup compiler flags
-      run: |
-        asanflags="-fsanitize=address,undefined -fno-sanitize-recover=undefined"
-
-        CPPFLAGS="$asanflags -g3"
-        LDFLAGS="$asanflags"
-
-        echo 'CPPFLAGS='"$CPPFLAGS" >> $GITHUB_ENV
-        echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
-    - name: Disable BitTorrent
-      if: matrix.bittorrent == 'without-bt'
-      run: |
-        FEATURE_FLAGS="$FEATURE_FLAGS --disable-bittorrent"
-
-        echo 'FEATURE_FLAGS='"$FEATURE_FLAGS" >> $GITHUB_ENV
-    - name: Configure autotools (Linux, gnutls)
-      if: runner.os == 'Linux' && matrix.crypto == 'gnutls'
-      run: |
-        ./configure --with-gnutls --without-openssl $FEATURE_FLAGS
-    - name: Configure autotools (Linux, openssl)
-      if: runner.os == 'Linux' && matrix.crypto == 'openssl'
-      run: |
-        ./configure --without-gnutls --with-openssl $FEATURE_FLAGS
-    - name: Configure autotools (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        ./configure \
-          --without-openssl --without-gnutls --with-appletls \
-          --disable-nls
-    - name: Build aria2
-      run: |
-        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
-
-  # Windows cross-compilation job
   build-windows:
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        include:
-          - arch: x86_64
-            host: x86_64-w64-mingw32
-          - arch: i686
-            host: i686-w64-mingw32
+    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v6
@@ -131,8 +26,8 @@ jobs:
       uses: actions/cache@v4
       id: cache-deps
       with:
-        path: /usr/local/${{ matrix.host }}
-        key: mingw-deps-${{ matrix.host }}-v2
+        path: /usr/local/x86_64-w64-mingw32
+        key: mingw-deps-x86_64-v3
 
     - name: Build zlib
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -140,11 +35,11 @@ jobs:
         curl -L -O https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
         tar xf zlib-1.3.1.tar.gz
         cd zlib-1.3.1
-        CC=${{ matrix.host }}-gcc AR=${{ matrix.host }}-ar LD=${{ matrix.host }}-ld \
-          RANLIB=${{ matrix.host }}-ranlib STRIP=${{ matrix.host }}-strip \
-          ./configure --prefix=/usr/local/${{ matrix.host }} \
-          --libdir=/usr/local/${{ matrix.host }}/lib \
-          --includedir=/usr/local/${{ matrix.host }}/include --static
+        CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar LD=x86_64-w64-mingw32-ld \
+          RANLIB=x86_64-w64-mingw32-ranlib STRIP=x86_64-w64-mingw32-strip \
+          ./configure --prefix=/usr/local/x86_64-w64-mingw32 \
+          --libdir=/usr/local/x86_64-w64-mingw32/lib \
+          --includedir=/usr/local/x86_64-w64-mingw32/include --static
         make -j$(nproc)
         sudo make install
 
@@ -155,7 +50,7 @@ jobs:
         tar xf c-ares-1.19.1.tar.gz
         cd c-ares-1.19.1
         ./configure --disable-shared --enable-static --without-random \
-          --prefix=/usr/local/${{ matrix.host }} --host=${{ matrix.host }} \
+          --prefix=/usr/local/x86_64-w64-mingw32 --host=x86_64-w64-mingw32 \
           --build=$(dpkg-architecture -qDEB_BUILD_GNU_TYPE) LIBS="-lws2_32"
         make -j$(nproc)
         sudo make install
@@ -167,7 +62,7 @@ jobs:
         tar xf expat-2.5.0.tar.bz2
         cd expat-2.5.0
         ./configure --disable-shared --enable-static \
-          --prefix=/usr/local/${{ matrix.host }} --host=${{ matrix.host }} \
+          --prefix=/usr/local/x86_64-w64-mingw32 --host=x86_64-w64-mingw32 \
           --build=$(dpkg-architecture -qDEB_BUILD_GNU_TYPE)
         make -j$(nproc)
         sudo make install
@@ -179,7 +74,7 @@ jobs:
         tar xf sqlite-autoconf-3430100.tar.gz
         cd sqlite-autoconf-3430100
         ./configure --disable-shared --enable-static \
-          --prefix=/usr/local/${{ matrix.host }} --host=${{ matrix.host }} \
+          --prefix=/usr/local/x86_64-w64-mingw32 --host=x86_64-w64-mingw32 \
           --build=$(dpkg-architecture -qDEB_BUILD_GNU_TYPE)
         make -j$(nproc)
         sudo make install
@@ -188,8 +83,8 @@ jobs:
       run: |
         autoreconf -i
         ./configure \
-          --host=${{ matrix.host }} \
-          --prefix=/usr/local/${{ matrix.host }} \
+          --host=x86_64-w64-mingw32 \
+          --prefix=/usr/local/x86_64-w64-mingw32 \
           --without-included-gettext \
           --disable-nls \
           --with-libcares \
@@ -203,14 +98,14 @@ jobs:
           --without-libgcrypt \
           --without-libnettle \
           ARIA2_STATIC=yes \
-          CPPFLAGS="-I/usr/local/${{ matrix.host }}/include" \
-          LDFLAGS="-L/usr/local/${{ matrix.host }}/lib" \
-          PKG_CONFIG_PATH="/usr/local/${{ matrix.host }}/lib/pkgconfig"
+          CPPFLAGS="-I/usr/local/x86_64-w64-mingw32/include" \
+          LDFLAGS="-L/usr/local/x86_64-w64-mingw32/lib" \
+          PKG_CONFIG_PATH="/usr/local/x86_64-w64-mingw32/lib/pkgconfig"
         make -j$(nproc)
-        ${{ matrix.host }}-strip src/aria2c.exe
+        x86_64-w64-mingw32-strip src/aria2c.exe
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: aria2c-windows-${{ matrix.arch }}
+        name: aria2c-windows-x86_64
         path: src/aria2c.exe
