@@ -7,8 +7,6 @@
 #include "NodeBalancer.h"
 
 #include <cstring>
-#include <sstream>
-#include <algorithm>
 
 #include "Logger.h"
 #include "LogFactory.h"
@@ -19,8 +17,7 @@
 
 namespace aria2 {
 
-std::unique_ptr<NodeBalancer> NodeBalancer::instance_;
-std::mutex NodeBalancer::instanceMutex_;
+NodeBalancer* NodeBalancer::instance_ = nullptr;
 
 NodeBalancer::NodeBalancer()
     : currentIndex_(0), enabled_(false), nodesFetched_(false)
@@ -31,17 +28,15 @@ NodeBalancer::~NodeBalancer() = default;
 
 NodeBalancer* NodeBalancer::getInstance()
 {
-  std::lock_guard<std::mutex> lock(instanceMutex_);
   if (!instance_) {
-    instance_.reset(new NodeBalancer());
+    instance_ = new NodeBalancer();
   }
-  return instance_.get();
+  return instance_;
 }
 
 void NodeBalancer::init(const std::string& apiUrl,
                         const std::string& targetHost)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   apiUrl_ = apiUrl;
   targetHost_ = targetHost;
 
@@ -77,7 +72,6 @@ void NodeBalancer::init(const std::string& apiUrl,
 void NodeBalancer::initWithIps(const std::string& ipList,
                                const std::string& targetHost)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   targetHost_ = targetHost;
   nodeIps_.clear();
 
@@ -137,17 +131,15 @@ bool NodeBalancer::shouldBalance(const std::string& host) const
 
 std::string NodeBalancer::getNextNodeIp()
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   if (nodeIps_.empty()) {
     return "";
   }
-  size_t index = currentIndex_.fetch_add(1) % nodeIps_.size();
+  size_t index = currentIndex_++ % nodeIps_.size();
   return nodeIps_[index];
 }
 
 std::string NodeBalancer::getNodeIp(size_t index) const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   if (index >= nodeIps_.size()) {
     return "";
   }
@@ -156,7 +148,6 @@ std::string NodeBalancer::getNodeIp(size_t index) const
 
 size_t NodeBalancer::getNodeCount() const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   return nodeIps_.size();
 }
 
@@ -164,27 +155,23 @@ const std::string& NodeBalancer::getTargetHost() const { return targetHost_; }
 
 void NodeBalancer::addNodeIp(const std::string& ip)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   nodeIps_.push_back(ip);
   A2_LOG_DEBUG(fmt("NodeBalancer: Added node IP %s", ip.c_str()));
 }
 
 void NodeBalancer::clearNodes()
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   nodeIps_.clear();
   currentIndex_ = 0;
 }
 
 std::vector<std::string> NodeBalancer::getAllNodeIps() const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   return nodeIps_;
 }
 
 void NodeBalancer::markIpFailed(const std::string& ip)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   failedIps_[ip]++;
   int failCount = failedIps_[ip];
   A2_LOG_WARN(fmt("NodeBalancer: IP %s failed (count: %d/%d)",
@@ -193,7 +180,6 @@ void NodeBalancer::markIpFailed(const std::string& ip)
 
 void NodeBalancer::markIpSuccess(const std::string& ip)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   auto it = failedIps_.find(ip);
   if (it != failedIps_.end()) {
     failedIps_.erase(it);
@@ -203,7 +189,6 @@ void NodeBalancer::markIpSuccess(const std::string& ip)
 
 std::string NodeBalancer::getWorkingNodeIp()
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   if (nodeIps_.empty()) {
     return "";
   }
@@ -236,14 +221,12 @@ std::string NodeBalancer::getWorkingNodeIp()
 
 void NodeBalancer::resetFailures()
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   failedIps_.clear();
   A2_LOG_INFO("NodeBalancer: Reset all IP failure counts");
 }
 
 size_t NodeBalancer::getAvailableNodeCount() const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   size_t available = 0;
   for (const auto& ip : nodeIps_) {
     auto it = failedIps_.find(ip);
@@ -258,9 +241,6 @@ bool NodeBalancer::parseApiResponse(const std::string& jsonResponse)
 {
   // Simple JSON parsing for the expected format:
   // {"success":true,"data":{"recommended_nodes":[{"ip":"..."},...]}}
-  //
-  // We'll do a simple string-based parsing since we don't want to add
-  // a JSON library dependency
 
   nodeIps_.clear();
 

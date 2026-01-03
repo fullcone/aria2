@@ -15,20 +15,17 @@
 
 #include "common.h"
 
-#include <atomic>
-#include <map>
-#include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
+#include <map>
+#include <memory>
 
 namespace aria2 {
 
 class NodeBalancer {
 private:
   // Singleton instance
-  static std::unique_ptr<NodeBalancer> instance_;
-  static std::mutex instanceMutex_;
+  static NodeBalancer* instance_;
 
   // Node API URL (e.g., "https://hs.cs16.fullcone.cn/realip")
   std::string apiUrl_;
@@ -40,10 +37,7 @@ private:
   std::vector<std::string> nodeIps_;
 
   // Current index for round-robin selection
-  std::atomic<size_t> currentIndex_;
-
-  // Mutex for thread-safe operations
-  mutable std::mutex mutex_;
+  size_t currentIndex_;
 
   // Whether the balancer is enabled
   bool enabled_;
@@ -56,9 +50,6 @@ private:
 
   // Maximum failures before marking IP as bad
   static const int MAX_FAILURES = 3;
-
-  // Time to wait before retrying a failed IP (in seconds)
-  static const int RETRY_INTERVAL = 300;
 
   // Private constructor for singleton
   NodeBalancer();
