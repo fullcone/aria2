@@ -382,7 +382,8 @@ bool NodeBalancer::fetchNodesFromApi()
     const int maxEmptyReads = 50;
 
     while (emptyReadCount < maxEmptyReads) {
-      ssize_t len = socket.readData(buf, sizeof(buf) - 1);
+      size_t len = sizeof(buf) - 1;
+      socket.readData(buf, len);
       if (len > 0) {
         buf[len] = '\0';
         response += buf;
@@ -397,12 +398,8 @@ bool NodeBalancer::fetchNodesFromApi()
           }
         }
       }
-      else if (len == 0) {
-        // Connection closed by server
-        break;
-      }
       else {
-        // No data available yet
+        // No data available or connection closed
         emptyReadCount++;
       }
     }
