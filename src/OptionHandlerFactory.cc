@@ -1992,6 +1992,28 @@ std::vector<OptionHandler*> OptionHandlerFactory::createOptionHandlers()
     op->addTag(TAG_HELP);
     handlers.push_back(op);
   }
+  // Node Balancer Options
+  {
+    OptionHandler* op(new DefaultOptionHandler(
+        PREF_NODE_BALANCER_API, TEXT_NODE_BALANCER_API, NO_DEFAULT_VALUE));
+    op->addTag(TAG_ADVANCED);
+    op->addTag(TAG_HTTP);
+    handlers.push_back(op);
+  }
+  {
+    OptionHandler* op(new DefaultOptionHandler(
+        PREF_NODE_BALANCER_HOST, TEXT_NODE_BALANCER_HOST, NO_DEFAULT_VALUE));
+    op->addTag(TAG_ADVANCED);
+    op->addTag(TAG_HTTP);
+    handlers.push_back(op);
+  }
+  {
+    OptionHandler* op(new DefaultOptionHandler(
+        PREF_NODE_BALANCER_IPS, TEXT_NODE_BALANCER_IPS, NO_DEFAULT_VALUE));
+    op->addTag(TAG_ADVANCED);
+    op->addTag(TAG_HTTP);
+    handlers.push_back(op);
+  }
 
   return handlers;
 }

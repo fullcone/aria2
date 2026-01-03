@@ -74,6 +74,12 @@ private:
   uint16_t connectedPort_;
   Timer wakeTime_;
 
+  // Override IP for connection (node balancing)
+  std::string overrideConnectIp_;
+
+  // Original host (for Host header when using node balancing)
+  std::string originalHost_;
+
   bool parseUri(const std::string& uri);
 
 public:
@@ -168,6 +174,19 @@ public:
   void setWakeTime(Timer timer) { wakeTime_ = timer; }
 
   const Timer& getWakeTime() { return wakeTime_; }
+
+  // Set override IP for connection (node balancing)
+  void setOverrideConnectIp(const std::string& ip) { overrideConnectIp_ = ip; }
+
+  const std::string& getOverrideConnectIp() const { return overrideConnectIp_; }
+
+  // Set original host for Host header (node balancing)
+  void setOriginalHost(const std::string& host) { originalHost_ = host; }
+
+  const std::string& getOriginalHost() const { return originalHost_; }
+
+  // Check if node balancing is active
+  bool isNodeBalancingActive() const { return !overrideConnectIp_.empty(); }
 
   static const std::string METHOD_GET;
   static const std::string METHOD_HEAD;

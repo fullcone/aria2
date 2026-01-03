@@ -78,6 +78,7 @@
 #  include "metalink_helper.h"
 #  include "MetalinkEntry.h"
 #endif // ENABLE_METALINK
+#include "NodeBalancer.h"
 
 extern char* optarg;
 extern int optind, opterr, optopt;
@@ -230,6 +231,20 @@ Context::Context(bool standalone, int argc, char** argv, const KeyVals& options)
     // Get rid of AI_ADDRCONFIG. It causes name resolution error when
     // none of network interface has IPv4/v6 address.
     setDefaultAIFlags(0);
+  }
+
+  // Initialize Node Balancer
+  if (!op->get(PREF_NODE_BALANCER_HOST).empty()) {
+    if (!op->get(PREF_NODE_BALANCER_IPS).empty()) {
+      // Use manual IP list
+      NodeBalancer::getInstance()->initWithIps(op->get(PREF_NODE_BALANCER_IPS),
+                                               op->get(PREF_NODE_BALANCER_HOST));
+    }
+    else if (!op->get(PREF_NODE_BALANCER_API).empty()) {
+      // Use API to fetch IPs
+      NodeBalancer::getInstance()->init(op->get(PREF_NODE_BALANCER_API),
+                                        op->get(PREF_NODE_BALANCER_HOST));
+    }
   }
 
   // Bind interface

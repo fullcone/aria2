@@ -67,6 +67,7 @@
 #include "error_code.h"
 #include "SocketRecvBuffer.h"
 #include "ChecksumCheckIntegrityEntry.h"
+#include "NodeBalancer.h"
 #ifdef ENABLE_ASYNC_DNS
 #  include "AsyncNameResolver.h"
 #  include "AsyncNameResolverMan.h"
@@ -840,6 +841,11 @@ bool AbstractCommand::checkIfConnectionEstablished(
   std::string error = socket->getSocketError();
   if (error.empty()) {
     return true;
+  }
+
+  // Mark node balancer IP as failed if using node balancing
+  if (req_ && req_->isNodeBalancingActive()) {
+    NodeBalancer::getInstance()->markIpFailed(req_->getOverrideConnectIp());
   }
 
   // See also InitiateConnectionCommand::executeInternal()

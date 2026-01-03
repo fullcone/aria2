@@ -101,6 +101,12 @@ createHttpRequest(const std::shared_ptr<Request>& req,
   httpRequest->setAcceptMetalink(rg->getDownloadContext()->getAcceptMetalink());
   httpRequest->setNoWantDigest(option->getAsBool(PREF_NO_WANT_DIGEST_HEADER));
 
+  // Set original host for node balancing
+  if (req->isNodeBalancingActive()) {
+    httpRequest->setOriginalHost(req->getOriginalHost());
+    httpRequest->setOverrideConnectHost(req->getOverrideConnectIp());
+  }
+
   if (option->getAsBool(PREF_HTTP_ACCEPT_GZIP)) {
     httpRequest->enableAcceptGZip();
   }
@@ -126,7 +132,13 @@ bool HttpRequestCommand::executeInternal()
   if (httpConnection_->sendBufferIsEmpty()) {
 #ifdef ENABLE_SSL
     if (getRequest()->getProtocol() == "https") {
-      if (!getSocket()->tlsConnect(getRequest()->getHost())) {
+      // Use original host for TLS SNI when node balancing is active
+      std::string tlsHost = getRequest()->getHost();
+      if (getRequest()->isNodeBalancingActive() &&
+          !getRequest()->getOriginalHost().empty()) {
+        tlsHost = getRequest()->getOriginalHost();
+      }
+      if (!getSocket()->tlsConnect(tlsHost)) {
         setReadCheckSocketIf(getSocket(), getSocket()->wantRead());
         setWriteCheckSocketIf(getSocket(), getSocket()->wantWrite());
         addCommandSelf();

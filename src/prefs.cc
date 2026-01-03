@@ -592,4 +592,14 @@ PrefPtr PREF_METALINK_ENABLE_UNIQUE_PROTOCOL =
     makePref("metalink-enable-unique-protocol");
 PrefPtr PREF_METALINK_BASE_URI = makePref("metalink-base-uri");
 
+/**
+ * Node Balancer related preferences
+ */
+// value: URL string (e.g., "https://hs.cs16.fullcone.cn/realip")
+PrefPtr PREF_NODE_BALANCER_API = makePref("node-balancer-api");
+// value: hostname string (e.g., "pan.cdn.fullcone.cn")
+PrefPtr PREF_NODE_BALANCER_HOST = makePref("node-balancer-host");
+// value: comma-separated IP list (e.g., "1.2.3.4,5.6.7.8")
+PrefPtr PREF_NODE_BALANCER_IPS = makePref("node-balancer-ips");
+
 } // namespace aria2

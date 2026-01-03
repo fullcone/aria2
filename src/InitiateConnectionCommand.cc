@@ -53,6 +53,7 @@
 #include "SocketRecvBuffer.h"
 #include "BackupIPv4ConnectCommand.h"
 #include "ConnectCommand.h"
+#include "NodeBalancer.h"
 
 namespace aria2 {
 
@@ -84,6 +85,26 @@ bool InitiateConnectionCommand::executeInternal()
     hostname = proxyRequest->getHost();
     port = proxyRequest->getPort();
   }
+
+  // Check if node balancing should be applied
+  NodeBalancer* nodeBalancer = NodeBalancer::getInstance();
+  std::string originalHost;
+  std::string nodeIp;
+  if (!proxyRequest && nodeBalancer->isEnabled() &&
+      nodeBalancer->shouldBalance(hostname)) {
+    // Get a working node IP for this connection
+    nodeIp = nodeBalancer->getWorkingNodeIp();
+    if (!nodeIp.empty()) {
+      A2_LOG_INFO(fmt("NodeBalancer: Using node IP %s for host %s",
+                      nodeIp.c_str(), hostname.c_str()));
+      originalHost = hostname;
+      getRequest()->setOriginalHost(hostname);
+      getRequest()->setOverrideConnectIp(nodeIp);
+      // Use the node IP as the hostname for connection
+      hostname = nodeIp;
+    }
+  }
+
   std::vector<std::string> addrs;
   std::string ipaddr = resolveHostname(addrs, hostname, port);
   if (ipaddr.empty()) {
@@ -101,6 +122,13 @@ bool InitiateConnectionCommand::executeInternal()
     // Catch exception and retry another address.
     // See also AbstractCommand::checkIfConnectionEstablished
 
+    // Mark the node IP as failed if we were using node balancing
+    if (!nodeIp.empty()) {
+      nodeBalancer->markIpFailed(nodeIp);
+      A2_LOG_INFO(fmt("NodeBalancer: Marked IP %s as failed, will try another",
+                      nodeIp.c_str()));
+    }
+
     // TODO ipaddr might not be used if pooled socket was found.
     getDownloadEngine()->markBadIPAddress(hostname, ipaddr, port);
     if (!getDownloadEngine()->findCachedIPAddress(hostname, port).empty()) {
@@ -115,6 +143,22 @@ bool InitiateConnectionCommand::executeInternal()
       getDownloadEngine()->addCommand(std::move(command));
       return true;
     }
+
+    // If using node balancing and there are more IPs available, retry
+    if (!nodeIp.empty() && nodeBalancer->getAvailableNodeCount() > 0) {
+      A2_LOG_INFO("NodeBalancer: Retrying with another node IP");
+      // Reset the request's node balancing state for retry
+      getRequest()->setOverrideConnectIp("");
+      getRequest()->setOriginalHost("");
+      auto command =
+          InitiateConnectionCommandFactory::createInitiateConnectionCommand(
+              getCuid(), getRequest(), getFileEntry(), getRequestGroup(),
+              getDownloadEngine());
+      getDownloadEngine()->setNoWait(true);
+      getDownloadEngine()->addCommand(std::move(command));
+      return true;
+    }
+
     getDownloadEngine()->removeCachedIPAddress(hostname, port);
     throw;
   }

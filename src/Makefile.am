@@ -168,6 +168,7 @@ SRCS =  \
 	Netrc.cc Netrc.h\
 	NetrcAuthResolver.cc NetrcAuthResolver.h\
 	NetStat.cc NetStat.h\
+	NodeBalancer.cc NodeBalancer.h\
 	Notifier.cc Notifier.h\
 	NsCookieParser.cc NsCookieParser.h\
 	NullHandle.h\

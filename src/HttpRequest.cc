@@ -190,7 +190,13 @@ std::string HttpRequest::createRequest()
       builtinHds.emplace_back("Accept-Encoding:", acceptableEncodings);
     }
   }
-  builtinHds.emplace_back("Host:", getHostText(getURIHost(), getPort()));
+  // Use original host for Host header when node balancing is active
+  if (!originalHost_.empty()) {
+    builtinHds.emplace_back("Host:", getHostText(originalHost_, getPort()));
+  }
+  else {
+    builtinHds.emplace_back("Host:", getHostText(getURIHost(), getPort()));
+  }
   if (noCache_) {
     builtinHds.emplace_back("Pragma:", "no-cache");
     builtinHds.emplace_back("Cache-Control:", "no-cache");

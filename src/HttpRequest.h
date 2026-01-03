@@ -101,6 +101,12 @@ private:
   // Don't send Want-Digest header field
   bool noWantDigest_;
 
+  // Override host for connection (for node balancing)
+  std::string overrideConnectHost_;
+
+  // Original host for Host header (when using node balancing)
+  std::string originalHost_;
+
   std::pair<std::string, std::string> getProxyAuthString() const;
 
 public:
@@ -233,6 +239,25 @@ public:
   bool conditionalRequest() const;
 
   void setNoWantDigest(bool b) { noWantDigest_ = b; }
+
+  // Set override host for connection (node balancing)
+  void setOverrideConnectHost(const std::string& host)
+  {
+    overrideConnectHost_ = host;
+  }
+
+  const std::string& getOverrideConnectHost() const
+  {
+    return overrideConnectHost_;
+  }
+
+  // Set original host for Host header (node balancing)
+  void setOriginalHost(const std::string& host) { originalHost_ = host; }
+
+  const std::string& getOriginalHost() const { return originalHost_; }
+
+  // Check if node balancing is active
+  bool isNodeBalancingActive() const { return !overrideConnectHost_.empty(); }
 };
 
 } // namespace aria2

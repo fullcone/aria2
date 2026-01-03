@@ -542,6 +542,16 @@ extern PrefPtr PREF_METALINK_ENABLE_UNIQUE_PROTOCOL;
 // values: a string
 extern PrefPtr PREF_METALINK_BASE_URI;
 
+/**
+ * Node Balancer related preferences
+ */
+// value: URL string (e.g., "https://hs.cs16.fullcone.cn/realip")
+extern PrefPtr PREF_NODE_BALANCER_API;
+// value: hostname string (e.g., "pan.cdn.fullcone.cn")
+extern PrefPtr PREF_NODE_BALANCER_HOST;
+// value: comma-separated IP list (e.g., "1.2.3.4,5.6.7.8")
+extern PrefPtr PREF_NODE_BALANCER_IPS;
+
 } // namespace aria2
 
 #endif // D_PREFS_H

@@ -77,6 +77,7 @@
 #include "NullProgressInfoFile.h"
 #include "Checksum.h"
 #include "ChecksumCheckIntegrityEntry.h"
+#include "NodeBalancer.h"
 #ifdef HAVE_ZLIB
 #  include "GZipDecodingStreamFilter.h"
 #endif // HAVE_ZLIB
@@ -151,6 +152,12 @@ bool HttpResponseCommand::executeInternal()
     setWriteCheckSocketIf(getSocket(), getSocket()->wantWrite());
     addCommandSelf();
     return false;
+  }
+
+  // Mark node IP as successful if using node balancing
+  if (getRequest()->isNodeBalancingActive()) {
+    NodeBalancer::getInstance()->markIpSuccess(
+        getRequest()->getOverrideConnectIp());
   }
 
   // check HTTP status code

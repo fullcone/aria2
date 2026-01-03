@@ -92,6 +92,9 @@ bool Request::resetUri()
 {
   supportsPersistentConnection_ = true;
   setConnectedAddrInfo(A2STR::NIL, A2STR::NIL, 0);
+  // Reset node balancing state
+  overrideConnectIp_.clear();
+  originalHost_.clear();
   return parseUri(uri_);
 }
 
@@ -104,6 +107,9 @@ bool Request::redirectUri(const std::string& uri)
 {
   supportsPersistentConnection_ = true;
   ++redirectCount_;
+  // Reset node balancing state on redirect (host may change)
+  overrideConnectIp_.clear();
+  originalHost_.clear();
   if (uri.empty()) {
     return false;
   }

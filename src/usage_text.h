@@ -1130,4 +1130,23 @@
     "                              successful, then skip downloading metadata from\n" \
     "                              DHT.")
 
+#define TEXT_NODE_BALANCER_API \
+  _(" --node-balancer-api=URL      Specify the API URL to fetch recommended node\n" \
+    "                              IPs for multi-IP load balancing. The API should\n" \
+    "                              return JSON with recommended_nodes array.\n" \
+    "                              Example: https://hs.cs16.fullcone.cn/realip")
+
+#define TEXT_NODE_BALANCER_HOST \
+  _(" --node-balancer-host=HOST    Specify the target hostname to apply node\n" \
+    "                              balancing. When downloading from this host,\n" \
+    "                              aria2 will connect to recommended node IPs\n" \
+    "                              instead, while keeping the original Host header.\n" \
+    "                              Example: pan.cdn.fullcone.cn")
+
+#define TEXT_NODE_BALANCER_IPS \
+  _(" --node-balancer-ips=IPS      Specify comma-separated list of node IPs to\n" \
+    "                              use for load balancing. This is an alternative\n" \
+    "                              to --node-balancer-api for manual configuration.\n" \
+    "                              Example: 1.2.3.4,5.6.7.8,9.10.11.12")
+
 // clang-format on
