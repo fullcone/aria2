@@ -137,6 +137,10 @@ bool HttpRequestCommand::executeInternal()
       if (getRequest()->isNodeBalancingActive() &&
           !getRequest()->getOriginalHost().empty()) {
         tlsHost = getRequest()->getOriginalHost();
+        A2_LOG_INFO(fmt("NodeBalancer: TLS SNI using original host: %s "
+                        "(connected to IP: %s)",
+                        tlsHost.c_str(),
+                        getRequest()->getOverrideConnectIp().c_str()));
       }
       if (!getSocket()->tlsConnect(tlsHost)) {
         setReadCheckSocketIf(getSocket(), getSocket()->wantRead());

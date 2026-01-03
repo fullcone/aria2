@@ -342,7 +342,16 @@ bool NodeBalancer::fetchNodesFromApi()
 
     // Create socket and connect
     SocketCore socket;
-    socket.establishConnection(host, port);
+    socket.establishConnection(host, port, true);
+
+    // Wait for connection to complete
+    if (!socket.isWritable(10)) {  // 10 second timeout
+      A2_LOG_ERROR(fmt("NodeBalancer: Connection timeout to %s:%d", host.c_str(), port));
+      return false;
+    }
+
+    socket.setBlockingMode();
+    A2_LOG_DEBUG(fmt("NodeBalancer: Connected to %s:%d", host.c_str(), port));
 
     // Build HTTP request
     std::string request = "GET " + path + " HTTP/1.1\r\n";
@@ -359,7 +368,7 @@ bool NodeBalancer::fetchNodesFromApi()
     std::string response;
     char buf[4096];
     int emptyReadCount = 0;
-    const int maxEmptyReads = 50;
+    const int maxEmptyReads = 100;
 
     while (emptyReadCount < maxEmptyReads) {
       size_t len = sizeof(buf) - 1;
@@ -379,8 +388,9 @@ bool NodeBalancer::fetchNodesFromApi()
         }
       }
       else {
-        // No data available or connection closed
+        // No data available, wait a bit
         emptyReadCount++;
+        util::usleep(10000); // 10ms
       }
     }
 
@@ -396,6 +406,8 @@ bool NodeBalancer::fetchNodesFromApi()
       A2_LOG_ERROR("NodeBalancer: Empty response body");
       return false;
     }
+
+    A2_LOG_DEBUG(fmt("NodeBalancer: Received response body: %s", body.c_str()));
 
     // Parse the JSON response
     nodesFetched_ = parseApiResponse(body);

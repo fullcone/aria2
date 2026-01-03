@@ -601,7 +601,8 @@ restart:
     if (!hostname.empty()) {
       setSNIHostname(hostname);
     }
-    A2_LOG_DEBUG("WinTLS: Initializing handshake");
+    A2_LOG_DEBUG(fmt("WinTLS: Initializing handshake with SNI hostname: %s",
+                     hostname_.empty() ? "(none)" : hostname_.c_str()));
     TLSBuffer buf(SECBUFFER_EMPTY, 0, nullptr);
     TLSBufferDesc desc(&buf, 1);
     SEC_CHAR* host =
